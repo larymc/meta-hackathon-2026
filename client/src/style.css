@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy-950: #07152e;
+  --color-navy-900: #0b1f3a;
+  --color-navy-800: #122c52;
+  --color-navy-700: #1a3a68;
+  --color-relais-cyan: #22d3ee;
+}
+body { font-family: Inter, ui-sans-system, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #eef2f7; }
+.chat-bg {
+  background-color: #ece5dd;
+  background-image: radial-gradient(#d6ccbd 1px, transparent 1px);
+  background-size: 22px 22px;
+}

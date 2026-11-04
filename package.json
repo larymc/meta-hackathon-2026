@@ -1,0 +1,14 @@
+{
+  "name": "relais",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Relais — From Conversation to Code. Gaismas Inc. (Meta Hackathon 2026)",
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "build": "npm --prefix server run build && npm --prefix client run build",
+    "test": "npm --prefix server run test",
+    "lint": "npm --prefix server run lint"
+  },
+  "devDependencies": { "concurrently": "^9.1.2" }
+}

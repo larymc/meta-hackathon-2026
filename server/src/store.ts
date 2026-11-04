@@ -50,11 +50,11 @@ export const store = {
     getDb().prepare("DELETE FROM idempotency WHERE key=?").run(key);
   },
   // Scoped demo reset: only the demo customer's conversations/messages. Webhook
-  // dedupe history and other customers' data are never wiped (DEF-008).
+  // dedupe history and other customers' data are never wiped.
   resetCustomer(customerId: string) {
     const d = getDb();
     d.prepare("DELETE FROM messages WHERE conv_id IN (SELECT id FROM conversations WHERE customer_id=?)").run(customerId);
-    d.prepare("DELETE FROM idempotency WHERE conv_id IN (SELECT id FROM conversations WHERE customer_id=?)").run(customerId); // NEW-003
+    d.prepare("DELETE FROM idempotency WHERE conv_id IN (SELECT id FROM conversations WHERE customer_id=?)").run(customerId);
     d.prepare("DELETE FROM conversations WHERE customer_id=?").run(customerId);
   },
 };

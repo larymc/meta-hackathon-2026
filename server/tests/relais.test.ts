@@ -76,7 +76,7 @@ describe("security boundaries", () => {
     config.whatsappAppSecret = "test-secret";
     const raw = Buffer.from(JSON.stringify({ x: 1 }));
     const sig = "sha256=" + crypto.createHmac("sha256", "test-secret").update(raw).digest("hex");
-    expect(verifyWhatsAppSignature(raw, sig)).toBe(true); // DEF-018: real positive verification
+    expect(verifyWhatsAppSignature(raw, sig)).toBe(true);
     expect(verifyWhatsAppSignature(raw, "sha256=bad")).toBe(false);
     config.whatsappAppSecret = prev;
     const parsed = parseWhatsAppPayload({ entry: [{ changes: [{ value: { statuses: [{ id: "s1" }], messages: [{ id: "m1", from: "15551234567", type: "text", text: { body: "hello" } }] } }] }] });
@@ -108,7 +108,7 @@ describe("security boundaries", () => {
   });
 });
 
-describe("audit remediation regressions", () => {
+describe("resilience, revision & edge-case coverage", () => {
   const draftFor = async (app: ReturnType<typeof buildApp>) => {
     const id = (await app.inject({ method: "POST", url: "/api/conversations" })).json().id as string;
     await app.inject({ method: "POST", url: `/api/conversations/${id}/messages`, payload: { text: "My website booking form doesn't work. Customers can't submit bookings." } });
@@ -116,7 +116,7 @@ describe("audit remediation regressions", () => {
     return id;
   };
 
-  it("DEF-002: retry after GitHub failure succeeds (idempotency released)", async () => {
+  it("retry after GitHub failure succeeds (idempotency released)", async () => {
     store.resetCustomer(DEMO_CUSTOMER.id);
     const id = crypto.randomUUID();
     store.createConversation(id, DEMO_CUSTOMER.id, DEMO_CUSTOMER.name);
@@ -130,10 +130,10 @@ describe("audit remediation regressions", () => {
     const retry = await approveConversation(id, flaky);
     expect(retry.already).toBe(false);
     expect(retry.view?.issue.number).toBe(999);
-    expect(retry.view?.state).toBe("developer_review"); // DEF-016
+    expect(retry.view?.state).toBe("developer_review");
   });
 
-  it("DEF-003: customer can revise/reject a draft without 502", async () => {
+  it("customer can revise/reject a draft without 502", async () => {
     expect(canTransition("awaiting_approval", "needs_clarification")).toBe(true);
     const app = buildApp();
     const id = await draftFor(app);
@@ -144,7 +144,7 @@ describe("audit remediation regressions", () => {
     expect(rev.json().state).toBe("needs_clarification");
   });
 
-  it("DEF-006: non-booking bug reports do not fabricate Safari/booking titles", async () => {
+  it("non-booking bug reports do not fabricate Safari/booking titles", async () => {
     const ai = new DeterministicDemoProvider();
     const r = await ai.analyze([{ role: "customer", content: "The website is broken" }]);
     expect(r.draft.title).not.toContain("Safari");
@@ -154,7 +154,7 @@ describe("audit remediation regressions", () => {
     expect(r2.draft.environment).not.toBe("iPhone / Safari");
   });
 
-  it("DEF-001: screenshot imageDataUrl is forwarded to the AI provider; fences stripped", async () => {
+  it("screenshot imageDataUrl is forwarded to the AI provider; fences stripped", async () => {
     expect(stripCodeFences("```json\n{\"a\":1}\n```")).toBe('{"a":1}');
     store.resetCustomer(DEMO_CUSTOMER.id);
     const id = crypto.randomUUID();
@@ -165,7 +165,7 @@ describe("audit remediation regressions", () => {
     expect(seen).toBe("data:image/png;base64,iVBORw0KGgo=");
   });
 
-  it("DEF-009: failed AI call leaves no orphaned customer turn", async () => {
+  it("failed AI call leaves no orphaned customer turn", async () => {
     store.resetCustomer(DEMO_CUSTOMER.id);
     const id = crypto.randomUUID();
     store.createConversation(id, DEMO_CUSTOMER.id, DEMO_CUSTOMER.name);
@@ -174,7 +174,7 @@ describe("audit remediation regressions", () => {
     expect(store.messages(id)).toHaveLength(0);
   });
 
-  it("DEF-011: concurrent approvals create one issue, no 400 race", async () => {
+  it("concurrent approvals create one issue, no 400 race", async () => {
     store.resetCustomer(DEMO_CUSTOMER.id);
     const id = crypto.randomUUID();
     store.createConversation(id, DEMO_CUSTOMER.id, DEMO_CUSTOMER.name);
@@ -187,7 +187,7 @@ describe("audit remediation regressions", () => {
     expect(b.status).toBe("fulfilled");
   });
 
-  it("DEF-005: unauthorized WhatsApp sender creates no conversation", async () => {
+  it("unauthorized WhatsApp sender creates no conversation", async () => {
     const app = buildApp();
     await app.inject({ method: "POST", url: "/api/conversations" });
     const payload = { entry: [{ changes: [{ value: { messages: [{ id: "wamid-evil-1", from: "15559998888", type: "text", text: { body: "spam hello" } }] } }] }] };
@@ -197,7 +197,7 @@ describe("audit remediation regressions", () => {
     expect(store.findByCustomer("15559998888")).toBeNull();
   });
 
-  it("DEF-012: GitHub listRecent queries the authorized repo with User-Agent", async () => {
+  it("GitHub listRecent queries the authorized repo with User-Agent", async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => [{ number: 7, title: "x" }] }));
     vi.stubGlobal("fetch", fetchMock);
     const gh = new GitHubProvider();
@@ -208,7 +208,7 @@ describe("audit remediation regressions", () => {
     vi.unstubAllGlobals();
   });
 
-  it("NEW-001: feature revision keeps [Feature] title; SMS-instead resolves to ready", async () => {
+  it("feature revision keeps [Feature] title; SMS-instead resolves to ready", async () => {
     const ai = new DeterministicDemoProvider();
     const revised = await ai.analyze([
       { role: "customer", content: "Can customers receive an email confirmation after booking?" },
@@ -226,7 +226,7 @@ describe("audit remediation regressions", () => {
     expect(resolved.draft.title).toContain("SMS");
   });
 
-  it("NEW-002: latest device mention wins over earlier history", async () => {
+  it("latest device mention wins over earlier history", async () => {
     const ai = new DeterministicDemoProvider();
     const r = await ai.analyze([
       { role: "customer", content: "My website booking form doesn't work on my iPhone." },
@@ -235,7 +235,7 @@ describe("audit remediation regressions", () => {
     expect(r.draft.environment).toBe("Android");
   });
 
-  it("NEW-003: resetCustomer clears idempotency rows for that customer", () => {
+  it("resetCustomer clears idempotency rows for that customer", () => {
     store.resetCustomer(DEMO_CUSTOMER.id);
     const id = crypto.randomUUID();
     store.createConversation(id, DEMO_CUSTOMER.id, DEMO_CUSTOMER.name);
@@ -247,7 +247,7 @@ describe("audit remediation regressions", () => {
     store.resetCustomer(DEMO_CUSTOMER.id);
   });
 
-  it("DEF-007: production start entry matches tsc output layout", () => {
+  it("production start entry matches tsc output layout", () => {
     const pkg = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { scripts: { start: string } };
     const tsconfig = fs.readFileSync(new URL("../tsconfig.json", import.meta.url), "utf8");
     expect(pkg.scripts.start).toBe("node dist/index.js");

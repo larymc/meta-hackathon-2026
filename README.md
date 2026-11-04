@@ -14,7 +14,7 @@ npm run dev            # API :3001 + Web :5173
 
 Open **http://localhost:5173** → click **Bug Report** (or **Feature Request**) → follow the chat → **Approve & create ticket**. Demo issues are labeled `relais_demo=1`; nothing leaves your machine.
 
-Other commands: `npm test` (10 Vitest tests) · `npm run build` (type-check + production builds) · `npm run lint`
+Other commands: `npm test` (22 Vitest tests) · `npm run build` (type-check + production builds) · `npm run lint`
 
 ## Going live (optional)
 
@@ -28,10 +28,8 @@ Copy `.env.example` to `server/.env` and fill in what you have — each integrat
 
 If a live AI call fails, the API returns a visible error — it never silently falls back to a simulated success.
 
-## Layout
+## Architecture & safety boundaries
 
 - `client/` — Vue 3 + TS + Vite + Tailwind chat simulator + AI Workbench
 - `server/` — Fastify + TS API, SQLite (`node:sqlite`), Zod-validated drafts, provider adapters (`server/src/providers/`), workflow state machine (`server/src/shared/issue.ts`)
-- `docs/` — architecture, 2-minute demo script, project description, capability list
-
-See `docs/ARCHITECTURE.md` for the flow and safety boundaries.
+- **Safety:** customer text is treated as untrusted input; AI output is Zod-validated and unknown facts stay `null`; target GitHub repositories are resolved strictly from server-side `CUSTOMER_REPO_MAP` (never chosen by the model); issue creation is gated on explicit customer approval and idempotent per conversation; webhooks verify HMAC-SHA256 over the raw body and dedupe by WhatsApp message ID.

@@ -42,7 +42,7 @@ export async function handleInbound(
   if (!clean) return { deduped: false, view: conversationView(convId) };
   const conv = store.getConversation(convId);
   if (!conv) throw new Error("Conversation not found");
-  // Analyze BEFORE persisting (DEF-009): a failed ai.analyze() must not leave an
+  // Analyze BEFORE persisting: a failed ai.analyze() must not leave an
   // orphaned customer turn that duplicates on retry.
   const prior = store.messages(convId);
   const history = [
@@ -70,7 +70,7 @@ export async function approveConversation(convId: string, issues: IssueProvider)
   const conv = store.getConversation(convId);
   if (!conv) throw new Error("Conversation not found");
   if (conv.issueJson) return { view: conversationView(convId), already: true };
-  // Concurrent duplicate approval while creation is in flight: idempotent, not an error (DEF-011).
+  // Concurrent duplicate approval while creation is in flight: idempotent, not an error.
   if (conv.state === "creating_issue") return { view: conversationView(convId), already: true };
   if (conv.state !== "awaiting_approval") throw new Error("Explicit customer approval required: conversation is not awaiting approval");
   if (!conv.draftJson) throw new Error("No draft to approve");
@@ -84,11 +84,11 @@ export async function approveConversation(convId: string, issues: IssueProvider)
     const created = await issues.create(draft, repo);
     const record = { ...created, repo, createdAt: new Date().toISOString() };
     store.updateState(convId, "issue_created", draft, record);
-    store.updateState(convId, "developer_review", draft, record); // DEF-016: hand off to developer review
+    store.updateState(convId, "developer_review", draft, record); // Hand off to developer review
     store.addMessage(newId(), convId, "assistant", created.isDemo ? `All set — I created demo issue #${created.number} (${repo}). Your developer will review it next.` : `All set — I created issue #${created.number} in ${repo}. Your developer will review it next.`, false);
     return { view: conversationView(convId), already: false };
   } catch (e) {
-    // DEF-002: release the idempotency key so a retry after a transient failure can succeed.
+    // Release the idempotency key so a retry after a transient failure can succeed.
     store.releaseIdempotency(key);
     store.updateState(convId, "awaiting_approval", draft, null);
     throw e;

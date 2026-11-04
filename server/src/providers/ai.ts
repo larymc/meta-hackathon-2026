@@ -35,7 +35,7 @@ export class DeterministicDemoProvider implements AIProvider {
 
     if (type === "feature") {
       if (revising) {
-        // Feature revision: keep the [Feature] draft, ask what to change (NEW-001).
+        // Feature revision: keep the [Feature] draft, ask what to change.
         const viaSmsRev = /sms|text message/i.test(joined);
         return {
           reply: "Of course — I won't create that ticket. What would you like changed in the draft?",
@@ -85,12 +85,12 @@ export class DeterministicDemoProvider implements AIProvider {
       };
     }
 
-    // Bug path — derive from actual customer text, never fabricate (DEF-006).
+    // Bug path — derive from actual customer text, never fabricate.
     const hasBehavior = /spinning|hang|loading|freeze|error|message|blank|crash|broken/i.test(joined);
     const hasEnv = /iphone|android|safari|chrome|firefox|phone|laptop|windows|desktop|tablet/i.test(joined);
     const hasFreq = /every time|always|only sometimes|sometimes|often/i.test(joined);
     const hasForm = /booking form/i.test(joined);
-    // Latest device mention wins: a correction ("actually Android") overrides history (NEW-002).
+    // Latest device mention wins: a correction ("actually Android") overrides history.
     const env = (() => {
       for (const msg of [...customer].reverse()) {
         if (/safari/i.test(msg) && /iphone/i.test(msg)) return "iPhone / Safari";
@@ -143,7 +143,7 @@ export function stripCodeFences(raw: string): string {
 export class MetaMuseProvider implements AIProvider {
   name = "Meta Muse (muse-spark-1.3)";
   isDemo = false;
-  // DEF-009: bounded timeout + retries instead of the SDK 10-minute default.
+  // Bounded timeout + retries instead of the SDK 10-minute default.
   private client = new OpenAI({ apiKey: config.modelApiKey, baseURL: config.modelBaseUrl, timeout: 20_000, maxRetries: 2 });
   async analyze(messages: ChatMsg[]): Promise<AIResult> {
     const system =
@@ -151,7 +151,7 @@ export class MetaMuseProvider implements AIProvider {
       "Return ONLY JSON: {reply:string, draft:IssueDraft}. Do not invent browser versions, root causes, or steps not confirmed by the customer. Unknown stays null/[]. Ask at most 2 concise questions when not ready. Draft fields: type bug|feature|question|maintenance, title, summary, impact|null, urgency low|medium|high|unknown, environment|null, stepsToReproduce[], expectedBehavior|null, actualBehavior|null, acceptanceCriteria[], clarificationQuestions[], missingInformation[], confidence 0..1, readyForApproval bool.";
     const transcript = messages.map((m) => `${m.role}: ${m.content}${m.hasImage ? " [screenshot attached]" : ""}`).join("\n");
     const imageMsg = [...messages].reverse().find((m) => m.imageDataUrl);
-    // DEF-001: send the actual image as an OpenAI-compatible image_url part when attached.
+    // Send the actual image as an OpenAI-compatible image_url part when attached.
     const userContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = imageMsg?.imageDataUrl
       ? [{ type: "text", text: transcript }, { type: "image_url", image_url: { url: imageMsg.imageDataUrl } }]
       : [{ type: "text", text: transcript }];

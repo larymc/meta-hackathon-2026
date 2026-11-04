@@ -11,7 +11,7 @@ import { getDb, store } from "./store.js";
 import { approveConversation, conversationView, getOrCreateConversation, handleInbound, newId, DEMO_CUSTOMER } from "./services/intake.js";
 
 // NOTE: /api/* is the local simulator/operator interface for the hackathon demo.
-// It has no per-customer auth; do not expose it publicly without adding auth (DEF-013).
+// It has no per-customer auth; do not expose it publicly without adding auth.
 export function buildApp() {
   getDb();
   const app = Fastify({ logger: false });
@@ -30,7 +30,7 @@ export function buildApp() {
   }));
 
   app.post("/api/conversations", async () => {
-    store.resetCustomer(DEMO_CUSTOMER.id); // DEF-008: scoped reset, never a global wipe
+    store.resetCustomer(DEMO_CUSTOMER.id); // Scoped reset, never a global wipe
     const id = newId();
     store.createConversation(id, DEMO_CUSTOMER.id, DEMO_CUSTOMER.name);
     return conversationView(id);
@@ -72,13 +72,13 @@ export function buildApp() {
 
   app.post("/api/conversations/:id/screenshot", async (req, reply) => {
     const id = (req.params as { id: string }).id;
-    if (!store.getConversation(id)) return reply.code(404).send({ error: "Not found" }); // DEF-010
+    if (!store.getConversation(id)) return reply.code(404).send({ error: "Not found" });
     const data = await req.file().catch(() => null);
     if (!data) return reply.code(400).send({ error: "No file" });
     if (!["image/png", "image/jpeg", "image/webp"].includes(data.mimetype)) return reply.code(400).send({ error: "Only PNG, JPEG or WebP screenshots" });
     const buf = await data.toBuffer();
     if (buf.length > 5 * 1024 * 1024) return reply.code(400).send({ error: "Screenshot too large (max 5 MB)" });
-    // DEF-001: forward the real image (base64 data URL) to the AI provider.
+    // Forward the real image (base64 data URL) to the AI provider.
     const imageDataUrl = `data:${data.mimetype};base64,${buf.toString("base64")}`;
     try {
       const r = await handleInbound(id, "[Screenshot shared] I attached a screenshot of the problem.", { hasImage: true, imageDataUrl, ai, issues });
@@ -113,14 +113,14 @@ export function buildApp() {
     reply.send({ ok: true });
     for (const m of messages) {
       try {
-        // DEF-005: allowlist only — every sender must map to an authorized repo.
+        // Allowlist only — every sender must map to an authorized repo.
         if (!authorizedRepoFor(m.customerId)) continue;
         const convId = getOrCreateConversation(m.customerId, m.customerId);
         const r = await handleInbound(convId, m.text, { hasImage: m.hasImage, externalId: m.externalId, ai, issues });
-        // DEF-004: send the AI reply back over WhatsApp when live credentials exist.
+        // Send the AI reply back over WhatsApp when live credentials exist.
         if (!r.deduped && r.reply && !messaging.isDemo) await messaging.send(m.customerId, r.reply);
       } catch {
-        console.error("whatsapp intake failed for one message; continuing batch"); // no customer content logged (DEF-010)
+        console.error("whatsapp intake failed for one message; continuing batch"); // no customer content logged
       }
     }
     return reply;
